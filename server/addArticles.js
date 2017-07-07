@@ -21,14 +21,14 @@ const getQueryStr = (code, type) => {
   }
   const locationStr = refObj[code];
   const timeNow = new Date().getTime(); // time in Unix Epoch ms...
-  const twoDaysAgo = timeNow - 86400000 - 86400000; // 86400000ms in a day
+  const timeSpan = timeNow - (86400000 * 30); // 86400000ms in a day
 
   return 'http://webhose.io/filterWebContent?token='+
           WEBHOSE_API_KEY +
           '&format=json&ts=' +
-          twoDaysAgo +
+          timeSpan +
           '&sort=published&q=is_first:true language:english published:>' +
-          twoDaysAgo +
+          timeSpan +
           ' site_type:news thread.country:' +
           countryCode +
           ' performance_score:>7 location:"' +

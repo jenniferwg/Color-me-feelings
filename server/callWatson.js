@@ -5,6 +5,12 @@ const dict = require('../reference/dictionary'); // stateDict, countryDict
 
 const stateDict = dict.stateDict;
 const countryDict = dict.countryDict;
+const today = new Date.getTime();
+const timePeriods = {
+  day: today - 86400000,
+  week: today - 86400000 * 7,
+  month: today - 86400000 * 30
+}
 
 // create instance of Tone Analyzer service
 const toneAnalyzer = new ToneAnalyzerV3({
@@ -30,36 +36,43 @@ const makeAvg = (obj, divisor) => {
   }
 };
 
-const callWatsonForScores = (articlesArr, finalObj, place, cb) => {
+const callWatsonForScores = (articlesArr, finalObj, place, period, cb) => {
   // only run cb if there are articles about that stat/country - cb assures makeAvg and adding to db happens after watson data is returned
   // counter checks that all articles have been analyzed
   let counter = 0;
   console.log('analyzing', articlesArr.length, 'articles in Watson for', place);
 
-  articlesArr.forEach( (article) => {
-    params.text = article.text;
-    toneAnalyzer.tone(params, (err, res) => {
-      if (err) { 
-        console.log('Watson: Error retreiving tone analysis', err); 
-      } else {
-        counter++;
+  //loop through all time frames
+  for (let period in timePeriods) {
+    articlesArr.forEach((article, index) => {
+      params.text = article.text;
+      toneAnalyzer.tone(params, (err, res) => {
+        if (err) { 
+          console.log('Watson: Error retreiving tone analysis', err); 
+        } else {
+          counter++;
 
-        // index of tone according to Watson response
-        const angerScore = res.document_tone.tone_categories[0].tones[0].score;
-        const disgustScore = res.document_tone.tone_categories[0].tones[1].score;
-        const fearScore = res.document_tone.tone_categories[0].tones[2].score;
-        const joyScore = res.document_tone.tone_categories[0].tones[3].score;
-        const sadnessScore = res.document_tone.tone_categories[0].tones[4].score;
-        // sum az's scores
-        finalObj[place].anger = finalObj[place].anger + angerScore;
-        finalObj[place].disgust = finalObj[place].disgust + disgustScore;
-        finalObj[place].fear = finalObj[place].fear + fearScore;
-        finalObj[place].joy = finalObj[place].joy + joyScore;
-        finalObj[place].sadness = finalObj[place].sadness + sadnessScore;
-        if (counter === articlesArr.length) { cb(); }
-      }
+          // index of tone according to Watson response
+          const angerScore = res.document_tone.tone_categories[0].tones[0].score;
+          const disgustScore = res.document_tone.tone_categories[0].tones[1].score;
+          const fearScore = res.document_tone.tone_categories[0].tones[2].score;
+          const joyScore = res.document_tone.tone_categories[0].tones[3].score;
+          const sadnessScore = res.document_tone.tone_categories[0].tones[4].score;
+          // sum az's scores
+          finalObj[place].anger = finalObj[place].anger + angerScore;
+          finalObj[place].disgust = finalObj[place].disgust + disgustScore;
+          finalObj[place].fear = finalObj[place].fear + fearScore;
+          finalObj[place].joy = finalObj[place].joy + joyScore;
+          finalObj[place].sadness = finalObj[place].sadness + sadnessScore;
+
+          //if last article or next article falls out of time period
+          const nextDate = new Date(articlesArr[index].date);
+          const nextMS = nextDate.getTime();
+          if (counter === articlesArr.length || nextMS < period) { cb(); }
+        }
+      });
     });
-  });
+  }
 
 };
 
@@ -76,41 +89,46 @@ const addTones = (type) => {
   db[collection].remove().then( () => {
 
     // loop through states/countries
-    for (let key in refObj) {
+    for (let code in refObj) {
 
-      // find all articles about state/country in db
-      const codeObj = type === 'state' ? { 'stateCode': key } : { 'countryCode': key };
+      // find all articles about state/country in db within time frame
+      const codeObj = type === 'state' ? { 'stateCode': code } : { 'countryCode': code };
+      codeObj.date = { $gt: timePeriods[period] };
+
       db.Article.find(codeObj, (err, allArticles) => {
         if (err) { 
-          console.log(`Error getting ${key} articles in db`, err); 
+          console.log(`Error getting ${code} articles in db`, err); 
         } else {
-          finalObj[key] = {
-            anger: 0, 
-            disgust: 0, 
-            fear: 0, 
-            joy: 0, 
-            sadness: 0
-          };
-          // run analyzer on all articles about state/country, add to finalObj
-          callWatsonForScores(allArticles, finalObj, key, () => {
-            // avg scores for state/country
-            makeAvg(finalObj[key], allArticles.length);
+            finalObj[code] = {
+              day: {},
+              week: {},
+              month: {}
+            };
+            // run analyzer on all articles about state/country, add to finalObj
+            callWatsonForScores(allArticles, finalObj, code, () => {
+              // avg scores for state/country
+              for (let )
+              makeAvg(finalObj[code], allArticles.length);
 
-            // create document
-            let newTone = new db[collection]({
-              tones: {
-                anger: finalObj[key].anger, 
-                disgust: finalObj[key].disgust, 
-                fear: finalObj[key].fear, 
-                joy: finalObj[key].joy, 
-                sadness: finalObj[key].sadness
-              }
+              // create document
+              const newTone = new db[collection]({
+                tones: {
+                  period: period,
+                  levels: {
+                    anger: finalObj[code].anger, 
+                    disgust: finalObj[code].disgust, 
+                    fear: finalObj[code].fear, 
+                    joy: finalObj[code].joy, 
+                    sadness: finalObj[code].sadness
+                  }
+                }
+              });
+              newTone[type] = code;
+              newTone.save((err, result) => {
+                if (err) { console.log(`There was an error saving ${code}'s tone data`); } 
+              });
             });
-            newTone[type] = key;
-            newTone.save((err, result) => {
-              if (err) { console.log(`There was an error saving ${key}'s tone data`); } 
-            });
-          });
+          }
         }
       });
     };

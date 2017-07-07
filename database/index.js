@@ -21,27 +21,38 @@ const articleSchema = new Schema({
   url: String
 });
 
+// const stateTones = new Schema({
+//   state: String,
+//   tones: {
+//     anger: {type: Number, default: null},
+//     disgust: {type: Number, default: null},
+//     fear: {type: Number, default: null},
+//     sadness: {type: Number, default: null},
+//     joy: {type: Number, default: null}
+//   }
+// });
+
+const tonesObj = {
+  anger: {type: Number, default: null},
+  disgust: {type: Number, default: null},
+  fear: {type: Number, default: null},
+  sadness: {type: Number, default: null},
+  joy: {type: Number, default: null}
+}
+
 const stateTones = new Schema({
   state: String,
-  tones: {
-    anger: {type: Number, default: null},
-    disgust: {type: Number, default: null},
-    fear: {type: Number, default: null},
-    sadness: {type: Number, default: null},
-    joy: {type: Number, default: null}
-  }
+  day: tonesObj,
+  week: tonesObj,
+  month: tonesObj
 });
 
 const countryTones = new Schema({
   country: String,
-  tones: {
-    anger: {type: Number, default: null},
-    disgust: {type: Number, default: null},
-    fear: {type: Number, default: null},
-    sadness: {type: Number, default: null},
-    joy: {type: Number, default: null}
-  }
-})
+  day: tonesObj,
+  week: tonesObj,
+  month: tonesObj
+});
 
 const StateTone = mongoose.model('StateTone', stateTones);
 const CountryTone = mongoose.model('CountryTone', countryTones);

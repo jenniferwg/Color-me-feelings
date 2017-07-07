@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 
 import Legend from './components/Legend';
 import EmotionDropdown from './components/EmotionDropdown';
+import TimeDropdown from './components/TimeDropdown'
 
 import mapboxgl from 'mapbox-gl';
 import { stateDict, countryDict } from '../../reference/dictionary.js';
@@ -141,6 +142,7 @@ class App extends React.Component {
     return (
       <div>
         <p className='title'>News Mapper</p>
+        <TimeDropdown handleEmotionChange={this.handleToneSelection.bind(this)} options={Object.keys(this.state.colors)} value={this.state.currentEmotion}/>
         <EmotionDropdown handleEmotionChange={this.handleToneSelection.bind(this)} options={Object.keys(this.state.colors)} value={this.state.currentEmotion}/>
         <div className='col-md-9 col-sm-9 col-lg-9'></div>
         <div className='col-md-1 col-sm-1 col-lg-1'>
